@@ -5,8 +5,11 @@ import time
 from typing import Any
 
 import requests
+from dotenv import load_dotenv
 
 from .models import MailRecord
+
+load_dotenv()
 
 URL = "https://api.typesafe.ai/v1/systemone"
 MODEL = "jev-latest"
