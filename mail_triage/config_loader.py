@@ -5,7 +5,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-REQUIRED_KEYS = {"version", "dry_run", "confidence_threshold", "sender_categories", "importance_rules"}
+REQUIRED_KEYS = {
+    "version",
+    "dry_run",
+    "confidence_threshold",
+    "gmail_fetch",
+    "sender_categories",
+    "importance_rules",
+}
 
 
 def load_config(path: str | Path) -> dict[str, Any]:

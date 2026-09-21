@@ -11,3 +11,4 @@ experiments/
 scripts/*.log
 config/gmail_oauth_client.json
 config/gmail_token.json
+config/fetch_state.json

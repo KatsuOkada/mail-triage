@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from email.utils import parseaddr
 from pathlib import Path
 from typing import Any
@@ -45,6 +46,23 @@ def authorize(
 def get_service(creds: Credentials | None = None) -> Resource:
     creds = creds or authorize()
     return build("gmail", "v1", credentials=creds)
+
+
+def build_query(config: dict[str, Any], last_checked: datetime | None) -> str:
+    """設定(gmail_fetch)と前回チェック時刻から、Gmail検索クエリを組み立てる。
+    last_checkedが無い場合(初回実行)はinitial_lookback_daysで遡る。
+    2回目以降は前回の実行開始時刻からのafter:(Unix秒)で厳密に絞り込み、
+    取りこぼし・二重処理を防ぐ。
+    """
+    fetch_config = config["gmail_fetch"]
+    base_query = fetch_config["base_query"]
+
+    if last_checked is None:
+        days = fetch_config.get("initial_lookback_days", 1)
+        return f"{base_query} newer_than:{days}d"
+
+    epoch_seconds = int(last_checked.timestamp())
+    return f"{base_query} after:{epoch_seconds}"
 
 
 def list_message_ids(service: Resource, query: str) -> list[str]:

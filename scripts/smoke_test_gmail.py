@@ -1,6 +1,7 @@
 """
-実際のGmailアカウントに接続し、直近のメールを数件取得できるか確認する。
+実際のGmailアカウントに接続し、前回チェック時刻以降の新着メールを取得・分類できるか確認する。
 dry_run: true 前提で、既読化・アーカイブ・ラベル付与などの変更は一切行わない。
+このスクリプトはテスト用のため、fetch_state(前回チェック時刻)の更新は行わない。
 """
 import sys
 from pathlib import Path
@@ -12,9 +13,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+from mail_triage.batch import fetch_new_records
 from mail_triage.config_loader import load_config
-from mail_triage.gmail_client import get_message_metadata, get_service, list_message_ids
-from mail_triage.models import MailRecord
+from mail_triage.gmail_client import get_service
 from mail_triage.runner import process_record
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -24,12 +25,11 @@ def main() -> None:
     config = load_config(ROOT / "config" / "classification_rules.json")
     service = get_service()
 
-    ids = list_message_ids(service, "in:inbox newer_than:1d")
-    print(f"直近1日で{len(ids)}件のメールが見つかりました。先頭5件を処理します。\n")
+    records, run_start = fetch_new_records(service, config)
+    print(f"新着{len(records)}件が見つかりました(今回の実行開始時刻: {run_start.isoformat()})。")
+    print("(このスクリプトはテスト用のため、fetch_stateは更新しません)\n")
 
-    for message_id in ids[:5]:
-        meta = get_message_metadata(service, message_id)
-        record = MailRecord(**meta)
+    for record in records[:5]:
         process_record(record, config)
         print(
             f"件名: {record.subject}\n"

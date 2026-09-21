@@ -3,6 +3,11 @@
   "dry_run": true,
   "confidence_threshold": 0.3,
 
+  "gmail_fetch": {
+    "base_query": "in:inbox",
+    "initial_lookback_days": 1
+  },
+
   "sender_categories": [
     {"category": "仕事", "domain_regex": "(^|\\.)bell-c\\.co\\.jp$", "note": "勤務先"},
 
