@@ -1,0 +1,13 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 実データ(実際のメール件名・送信元・スニペットを含む)は非公開にする
+experiments/
+scripts/*.log
+config/gmail_oauth_client.json
+config/gmail_token.json

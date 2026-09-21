@@ -1,0 +1,61 @@
+{
+  "version": 1,
+  "dry_run": true,
+  "confidence_threshold": 0.3,
+
+  "sender_categories": [
+    {"category": "仕事", "domain_regex": "(^|\\.)bell-c\\.co\\.jp$", "note": "勤務先"},
+
+    {"category": "金融", "domain_regex": "(^|\\.)vpass\\.ne\\.jp$", "note": "三井住友カード"},
+    {"category": "金融", "domain_regex": "(^|\\.)jp-bank-card\\.jp$", "note": "JP BANKカード"},
+    {"category": "金融", "domain_regex": "(^|\\.)smbc\\.co\\.jp$", "note": "三井住友銀行"},
+    {"category": "金融", "domain_regex": "(^|\\.)jcom\\.co\\.jp$", "note": "J:COM請求"},
+
+    {"category": "EC", "domain_regex": "(^|\\.)amazon\\.com$", "note": "Amazon/Amazon Pay"},
+    {"category": "EC", "domain_regex": "(^|\\.)kuronekoyamato\\.co\\.jp$", "note": "ヤマト運輸"},
+    {"category": "EC", "domain_regex": "(^|\\.)basefood\\.co\\.jp$", "note": "BASE FOOD"},
+    {"category": "EC", "domain_regex": "(^|\\.)steampowered\\.com$", "note": "Steam"},
+    {"category": "EC", "domain_regex": "(^|\\.)rakuten\\.co\\.jp$", "note": "楽天"},
+    {"category": "EC", "domain_regex": "(^|\\.)uber\\.com$", "note": "Uber Eats"},
+    {"category": "EC", "domain_regex": "(^|\\.)tonya\\.co\\.jp$", "note": "珈琲問屋"},
+    {"category": "EC", "domain_regex": "(^|\\.)openrouter\\.ai$", "note": "OpenRouter利用明細"},
+    {"category": "EC", "domain_regex": "(^|\\.)a2\\.kepco\\.co\\.jp$", "note": "かんでん暮らしモール(広告/EC統合先扱い)"},
+    {"category": "EC", "domain_regex": "(^|\\.)didiglobal\\.com$", "note": "DiDi(広告/EC統合先扱い)"},
+    {"category": "EC", "domain_regex": "(^|\\.)expy\\.jp$", "note": "スマートEX/JR東海ツアーズ"},
+
+    {"category": "就活", "domain_regex": "(^|\\.)bizreach\\.co\\.jp$", "note": "ビズリーチ"}
+  ],
+
+  "importance_rules": [
+    {
+      "category": "仕事",
+      "subject_regex": "^\\d{2}月\\d{2}日 .+さんのスケジュール$",
+      "verdict": "確認不要",
+      "note": "自動配信の自分宛スケジュール通知"
+    },
+    {
+      "category": "仕事",
+      "subject_regex": "^アンケート：",
+      "verdict": "確認不要",
+      "note": "内容判定はせず到着事実のみ。カテゴリ別一覧には引き続き表示"
+    },
+    {
+      "category": "仕事",
+      "subject_regex": "^回覧・レポート：",
+      "verdict": "確認不要",
+      "note": "内容判定はせず到着事実のみ。カテゴリ別一覧には引き続き表示"
+    },
+    {
+      "category": "金融",
+      "subject_regex": "認証コード",
+      "verdict": "確認不要",
+      "note": "OTPは翌朝には失効しているため、内容に関わらず確認不要"
+    },
+    {
+      "category": "EC",
+      "subject_regex": ".*",
+      "verdict": "確認不要",
+      "note": "配送/購入は事実分類のみで重要度判定はしない。不審な注文への気づきはカテゴリ一覧の目視で行う"
+    }
+  ]
+}
