@@ -9,6 +9,7 @@ venv/
 # 実データ(実際のメール件名・送信元・スニペットを含む)は非公開にする
 experiments/
 scripts/*.log
+logs/
 config/gmail_oauth_client.json
 config/gmail_token.json
 config/fetch_state.json

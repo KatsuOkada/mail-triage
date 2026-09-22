@@ -11,8 +11,11 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
 
 # gmail.modify: 読み取り+ラベル変更(既読化・アーカイブ・ラベル付与)が可能。
-# 完全削除やアカウント設定変更は含まれない。
-SCOPES = ["https://www.googleapis.com/auth/gmail.modify"]
+# gmail.settings.basic: フィルタ等の設定管理に必要(フィルタ削除のため追加)。
+SCOPES = [
+    "https://www.googleapis.com/auth/gmail.modify",
+    "https://www.googleapis.com/auth/gmail.settings.basic",
+]
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_CLIENT_SECRET_PATH = ROOT / "config" / "gmail_oauth_client.json"
@@ -129,6 +132,15 @@ def modify_labels(
     service.users().messages().modify(userId="me", id=message_id, body=body).execute()
 
 
+def batch_remove_labels(service: Resource, message_ids: list[str], label_ids: list[str]) -> None:
+    """複数メッセージから複数ラベルをまとめて外す(batchModify、1回最大1000件)。"""
+    for i in range(0, len(message_ids), 1000):
+        chunk = message_ids[i : i + 1000]
+        service.users().messages().batchModify(
+            userId="me", body={"ids": chunk, "removeLabelIds": label_ids}
+        ).execute()
+
+
 def mark_read_and_archive(service: Resource, message_id: str, dry_run: bool) -> None:
     """確認不要メールの既読化・アーカイブ。dry_run中は実際には変更しない。"""
     if dry_run:
@@ -164,3 +176,14 @@ def apply_category_label(service: Resource, message_id: str, category: str, dry_
         return
     label_id = get_or_create_label(service, category)
     modify_labels(service, message_id, add=[label_id])
+
+
+def list_filters(service: Resource) -> list[dict[str, Any]]:
+    """設定済みのGmailフィルタ(自動振り分けルール)を一覧取得する。要gmail.settings.basicスコープ。"""
+    resp = service.users().settings().filters().list(userId="me").execute()
+    return resp.get("filter", [])
+
+
+def delete_filter(service: Resource, filter_id: str) -> None:
+    """フィルタを1件削除する。元に戻せないので呼び出し前に内容を確認すること。"""
+    service.users().settings().filters().delete(userId="me", id=filter_id).execute()
