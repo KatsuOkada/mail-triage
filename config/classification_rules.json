@@ -27,8 +27,34 @@
     {"category": "EC", "domain_regex": "(^|\\.)a2\\.kepco\\.co\\.jp$", "note": "かんでん暮らしモール(広告/EC統合先扱い)"},
     {"category": "EC", "domain_regex": "(^|\\.)didiglobal\\.com$", "note": "DiDi(広告/EC統合先扱い)"},
     {"category": "EC", "domain_regex": "(^|\\.)expy\\.jp$", "note": "スマートEX/JR東海ツアーズ"},
+    {"category": "EC", "domain_regex": "(^|\\.)amazon\\.co\\.jp$", "note": "Amazon.co.jp(amazon.comとは別ドメイン)"},
+    {"category": "EC", "domain_regex": "(^|\\.)kakaku\\.com$", "note": "価格.com"},
+    {"category": "EC", "domain_regex": "(^|\\.)monotaro\\.com$", "note": "モノタロウ"},
+    {"category": "EC", "domain_regex": "(^|\\.)ana\\.co\\.jp$", "note": "ANA"},
+    {"category": "EC", "domain_regex": "(^|\\.)aoyama-syouji\\.co\\.jp$", "note": "洋服の青山"},
+    {"category": "EC", "domain_regex": "(^|\\.)pizza-la\\.co\\.jp$", "note": "ピザーラ"},
+    {"category": "EC", "domain_regex": "(^|\\.)qiita\\.com$", "note": "技術ニュース(広告/EC統合先扱い)"},
+    {"category": "EC", "domain_regex": "(^|\\.)cursor\\.com$", "note": "技術ニュース(広告/EC統合先扱い)"},
+    {"category": "EC", "domain_regex": "(^|\\.)ping-t\\.com$", "note": "技術ニュース(広告/EC統合先扱い)"},
 
-    {"category": "就活", "domain_regex": "(^|\\.)bizreach\\.co\\.jp$", "note": "ビズリーチ"}
+    {"category": "金融", "domain_regex": "(^|\\.)nissay\\.co\\.jp$", "note": "日本生命"},
+
+    {"category": "就活", "domain_regex": "(^|\\.)bizreach\\.co\\.jp$", "note": "ビズリーチ"},
+    {"category": "就活", "domain_regex": "(^|\\.)en-japan\\.com$", "note": "エン・ジャパン"},
+    {"category": "就活", "domain_regex": "(^|\\.)mid-tenshoku\\.com$", "note": "エン転職"},
+    {"category": "就活", "domain_regex": "(^|\\.)kyarioku\\.jp$", "note": "キャリオク"},
+    {"category": "就活", "domain_regex": "(^|\\.)ecareer\\.ne\\.jp$", "note": "イーキャリア"},
+    {"category": "就活", "domain_regex": "(^|\\.)en-ambi\\.com$", "note": "エンAMBI"},
+    {"category": "就活", "domain_regex": "(^|\\.)en-gage\\.net$", "note": "engage"},
+    {"category": "就活", "domain_regex": "(^|\\.)jobtalk\\.jp$", "note": "ジョブトーク"},
+    {"category": "就活", "domain_regex": "(^|\\.)r-agent\\.com$", "note": "リクルートエージェント"},
+    {"category": "就活", "domain_regex": "(^|\\.)paiza\\.jp$", "note": "paiza"},
+    {"category": "就活", "domain_regex": "(^|\\.)persol\\.co\\.jp$", "note": "パーソル(doda)"},
+    {"category": "就活", "domain_regex": "(^|\\.)jobnews-doda\\.jp$", "note": "doda"},
+    {"category": "就活", "domain_regex": "(^|\\.)ee-ties\\.com$", "note": "求人系(旧フィルタより)"},
+
+    {"category": "その他", "domain_regex": "(^|\\.)suumo\\.jp$", "note": "住まい関連(SUUMO)"},
+    {"category": "その他", "domain_regex": "(^|\\.)mansion-note\\.com$", "note": "住まい関連(マンションノート)"}
   ],
 
   "importance_rules": [
