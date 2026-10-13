@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "dry_run": true,
+  "jev_enabled": true,
+  "confidence_threshold": 0.3,
+
+  "gmail_fetch": {
+    "base_query": "in:inbox"
+  },
+
+  "jev_prompt": {
+    "instructions": "受信者にとって、このメールが以下のどの区分に該当するか判定してください。",
+    "criteria": {
+      "重要": "契約内容、金銭の支払い、期限のある依頼など、後から見返す必要がある重要な内容",
+      "技術ニュース": "利用中のサービス・ライブラリのバージョンアップ情報や、技術情報サイトの新着記事など、技術的な情報として後で参照したい内容",
+      "要確認": "内容は一度確認すべきだが、確認後は見返す必要のない内容(セキュリティ通知、ログイン通知など)",
+      "確認不要": "広告・キャンペーン・任意参加の案内など、確認しなくても実害がない内容"
+    }
+  },
+
+  "verdict_levels": [
+    {"name": "重要", "display_group": "要確認", "apply_label": true, "label_name": "重要メール", "note": "Gmailは'重要'という名前のラベル作成を拒否するため、実際のラベル名はlabel_nameで上書きする"},
+    {"name": "技術ニュース", "display_group": "確認不要", "apply_label": true},
+    {"name": "要確認", "display_group": "要確認", "apply_label": false},
+    {"name": "確認不要", "display_group": "確認不要", "apply_label": false}
+  ],
+
+  "sender_categories": [
+    {"category": "仕事", "domain_regex": "(^|\\.)example-corp\\.co\\.jp$", "note": "勤務先(サンプル)"},
+    {"category": "金融", "domain_regex": "(^|\\.)example-bank\\.co\\.jp$", "note": "銀行(サンプル)"},
+    {"category": "金融", "domain_regex": "(^|\\.)example-card\\.jp$", "note": "クレジットカード(サンプル)"},
+    {"category": "EC", "domain_regex": "(^|\\.)example-shop\\.com$", "note": "通販サイト(サンプル)"},
+    {"category": "技術", "domain_regex": "(^|\\.)example-tech-news\\.com$", "note": "技術情報サイト(サンプル)"},
+    {"category": "サービス", "domain_regex": "(^|\\.)example-cloud\\.com$", "note": "メールごとに重要度が変わるサービス(サンプル)。importance_rulesを置かずJevに委ねる"},
+    {"category": "その他", "domain_regex": "(^|\\.)example-news\\.jp$", "note": "ニュースレター(サンプル)"}
+  ],
+
+  "importance_rules": [
+    {
+      "category": "金融",
+      "subject_regex": "お支払い金額のお知らせ",
+      "verdict": "重要",
+      "note": "クレジットカードの請求金額通知"
+    },
+    {
+      "category": "金融",
+      "subject_regex": "認証コード",
+      "verdict": "確認不要",
+      "note": "ワンタイムパスワードは後から確認する頃には失効している"
+    },
+    {
+      "category": "仕事",
+      "subject_regex": "^【自動通知】",
+      "verdict": "確認不要",
+      "note": "自動配信の通知"
+    },
+    {
+      "category": "仕事",
+      "subject_regex": "^【要回答】",
+      "verdict": "要確認",
+      "note": "回答が必要な社内連絡"
+    },
+    {
+      "category": "EC",
+      "subject_regex": ".*",
+      "verdict": "確認不要",
+      "note": "EC関連は一律確認不要"
+    },
+    {
+      "category": "技術",
+      "subject_regex": ".*",
+      "verdict": "技術ニュース",
+      "note": "技術情報サイトの新着記事通知は一律技術ニュース扱い"
+    }
+  ]
+}

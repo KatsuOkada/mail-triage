@@ -1,0 +1,16 @@
+.env
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+
+# 実データ(実際のメール件名・送信元・スニペットを含む)は非公開にする
+experiments/
+scripts/*.log
+logs/
+config/gmail_oauth_client.json
+config/gmail_token.json
+# 個人の分類設定(実際の送信元ドメインなどを含む)。リポジトリには classification_rules.example.json だけを置く
+config/classification_rules.json
