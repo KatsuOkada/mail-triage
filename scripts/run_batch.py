@@ -9,6 +9,7 @@
 4. 判定結果を日次JSONLに記録
 5. レビュー用のHTMLレポートを実行時刻付きのファイル名で書き出す(1日に何度実行しても上書きされない)
 """
+import os
 import sys
 from pathlib import Path
 
@@ -26,7 +27,7 @@ from mail_triage.batch_runner import run_once
 from mail_triage.gmail_client import get_service
 
 ROOT = Path(__file__).resolve().parent.parent
-LOG_DIR = ROOT / "logs"
+LOG_DIR = Path(os.environ.get("MAIL_TRIAGE_DATA_DIR", ROOT)) / "logs"
 CONFIG_PATH = ROOT / "config" / "classification_rules.json"
 
 

@@ -10,7 +10,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import shutil
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -59,6 +61,12 @@ def export_dashboard_summary(
     path = log_dir / SUMMARY_FILENAME
     summary = build_dashboard_summary(records, config, generated_at)
     path.write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    # ダッシュボードと同じ機械で動かすときは、ssh で送らずにファイルを置くだけでよい
+    local_copy = os.environ.get("MAIL_TRIAGE_DASHBOARD_COPY")
+    if local_copy:
+        shutil.copyfile(path, local_copy)
+        logger.info("ダッシュボード用の要約を置きました: %s", local_copy)
 
     host = config.get("dashboard_push_host")
     if host:
