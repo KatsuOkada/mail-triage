@@ -227,3 +227,39 @@ def test_dev_only_endpoints_refused_for_normal_device(server):  # R-15
     cookie = _register(base)
     assert _request(base + "/api/config_prompt", cookie=cookie)[0] == 404
     assert _request(base + "/config/rules", cookie=cookie)[0] == 404
+
+
+def test_device_unused_for_a_year_is_no_longer_valid(core):  # Cookie は1年(使うたびに延長)
+    token, _ = core.register("secret-word", "old-phone", False)
+    devices = core.devices()
+    devices[0]["last_used"] = "2020-01-01T00:00:00"
+    web_app._write_json(core.web_dir / "devices.json", devices)
+    assert core.find_device(token) is None
+
+
+def test_registered_request_renews_cookie_for_one_year(server):
+    base, _ = server
+    cookie = _register(base)
+    _, _, headers = _request(base + "/api/status", cookie=cookie)
+    assert headers["Set-Cookie"].startswith(cookie + ";")
+    assert "Max-Age=31536000" in headers["Set-Cookie"]
+
+
+@pytest.fixture
+def local_server(core):
+    httpd = ThreadingHTTPServer(("127.0.0.1", 0), make_handler(core, lambda ids: (ids, [])))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    yield f"http://127.0.0.1:{httpd.server_address[1]}"
+    core.gate.set()
+    httpd.shutdown()
+
+
+def test_loopback_without_registration_only_for_run_and_status(local_server, core):
+    (core.log_dir / "2026-10-15_090000_report.html").write_text(REPORT, encoding="utf-8")
+    assert _request(local_server + "/api/status")[0] == 200
+    status, body, _ = _request(local_server + "/")
+    assert "合言葉" in body and "<h1>結果</h1>" not in body  # レポートは登録が必要
+    req = (local_server + "/actions/bulk_archive", b'{"message_ids":["a"]}')
+    assert _request(req[0], data=req[1], method="POST")[0] == 401
+    status, body, _ = _request(local_server + "/api/run?trigger=nightly", data=b"", method="POST")
+    assert json.loads(body)["trigger"] == "nightly"

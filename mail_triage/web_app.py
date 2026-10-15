@@ -1,10 +1,11 @@
 """LAN 内の端末(PC・iPad・スマホ)からレポートの表示・手動実行・一括アーカイブを行う Web サーバー。
 
-Raspberry Pi で常駐させる想定。設計: AI_Vault の projects/mail-triage-lan-design.md
+Raspberry Pi で常駐させる想定。
 - 家の LAN(プライベートな IPv4)と自分自身(127.0.0.1)からの接続だけを受け付ける
 - 端末は初回だけ合言葉で登録し、以後は Cookie で見分ける。未登録の端末にはメールの内容を出さない
 - 実行は同時に 1 つだけ。実行中に「今すぐ実行」が来たら新しくは始めず、実行中のものに相乗りする
-- 自分自身(127.0.0.1)からの要求は登録なしで通す(夜間実行のタイマーと、ssh 経由の操作のため)
+- 自分自身(127.0.0.1)からは、実行の依頼と状態の確認だけを登録なしで通す(夜間実行のタイマーのため)
+- 端末の Cookie は1年で切れるが、使うたびに延長する
 """
 
 from __future__ import annotations
@@ -35,7 +36,9 @@ logger = logging.getLogger("mail_triage.web")
 
 ROOT = Path(__file__).resolve().parent.parent
 COOKIE_NAME = "mt_device"
-COOKIE_MAX_AGE = 10 * 365 * 24 * 3600
+COOKIE_MAX_AGE = 365 * 24 * 3600  # 使うたびに延長する。1年使わなかった端末は登録し直し
+# Pi 自身(127.0.0.1)から登録なしで使えるのは、夜間実行のきっかけと状態の確認だけ
+LOCAL_PATHS = {"/api/run", "/api/status"}
 MAX_FAILURES = 5
 LOCKOUT_SECONDS = 15 * 60
 REPORT_NAME = re.compile(r"^(\d{4}-\d{2}-\d{2})_(\d{2})(\d{2})(\d{2})_report\.html$")
@@ -128,7 +131,13 @@ class WebCore:
         if not token:
             return None
         h = _token_hash(token)
-        return next((d for d in self.devices() if hmac.compare_digest(d["token_hash"], h)), None)
+        device = next((d for d in self.devices() if hmac.compare_digest(d["token_hash"], h)), None)
+        if device is None:
+            return None
+        last = datetime.fromisoformat(device.get("last_used") or device["registered"])
+        if (datetime.now() - last).total_seconds() > COOKIE_MAX_AGE:
+            return None  # 1年使っていない端末は無効
+        return device
 
     def touch_device(self, device: dict[str, Any]) -> None:
         with self._lock:
@@ -268,7 +277,7 @@ class WebCore:
         prompt = build_config_prompt(self.log_dir, unclassified)
         note = (
             "【注意】この mail-triage は Raspberry Pi で動いています。設定ファイルは Pi の "
-            f"{self.config_path} です。開発PC からは `ssh raspi` で編集してください"
+            f"{self.config_path} です。開発PC からは ssh でその機械に入って編集してください"
             "(保存すれば次の実行から反映されます)。\n\n"
         )
         return note + prompt, len(unclassified)
@@ -429,6 +438,10 @@ MANIFEST = json.dumps(
 ).encode("utf-8")
 
 
+def _cookie(token: str) -> str:
+    return f"{COOKIE_NAME}={token}; Max-Age={COOKIE_MAX_AGE}; Path=/; HttpOnly; SameSite=Strict"
+
+
 def make_handler(core: WebCore, archive: Callable[[list[str]], tuple[list[str], list[str]]]):
     icon = make_icon_png()
 
@@ -442,7 +455,10 @@ def make_handler(core: WebCore, archive: Callable[[list[str]], tuple[list[str], 
             self.send_header("Content-Type", ctype)
             self.send_header("Content-Length", str(len(body)))
             self.send_header("Cache-Control", "no-store")
-            for k, v in (headers or {}).items():
+            headers = dict(headers or {})
+            if self._renew_token and "Set-Cookie" not in headers:
+                headers["Set-Cookie"] = _cookie(self._renew_token)  # 使うたびに期限を延ばす
+            for k, v in headers.items():
                 self.send_header(k, v)
             self.end_headers()
             self.wfile.write(body)
@@ -460,17 +476,22 @@ def make_handler(core: WebCore, archive: Callable[[list[str]], tuple[list[str], 
         def _client(self) -> str:
             return self.client_address[0]
 
+        _renew_token: str | None = None
+
         def _device(self) -> dict[str, Any] | None:
             cookie = SimpleCookie(self.headers.get("Cookie", ""))
             token = cookie[COOKIE_NAME].value if COOKIE_NAME in cookie else None
-            return core.find_device(token)
+            device = core.find_device(token)
+            if device:
+                self._renew_token = token
+            return device
 
-        def _gate(self) -> tuple[bool, dict[str, Any] | None]:
+        def _gate(self, path: str) -> tuple[bool, dict[str, Any] | None]:
             """(通してよいか, 端末)。LAN の外は 403、未登録は呼び出し側で登録画面へ。"""
             if not is_allowed_client(self._client()):
                 self._send(403, b"forbidden", "text/plain")
                 return False, None
-            if is_loopback(self._client()):
+            if is_loopback(self._client()) and path in LOCAL_PATHS:
                 return True, {"id": "local", "name": "local", "dev": False}
             device = self._device()
             if device:
@@ -487,7 +508,7 @@ def make_handler(core: WebCore, archive: Callable[[list[str]], tuple[list[str], 
                 return self._send(200, icon, "image/png")
             if path == "/manifest.webmanifest":
                 return self._send(200, MANIFEST, "application/manifest+json")
-            ok, device = self._gate()
+            ok, device = self._gate(path)
             if device is None and not ok:
                 if is_allowed_client(self._client()):
                     if path.startswith("/api/"):
@@ -524,9 +545,8 @@ def make_handler(core: WebCore, archive: Callable[[list[str]], tuple[list[str], 
                 )
                 if token is None:
                     return self._html(build_register_page(error))
-                cookie = f"{COOKIE_NAME}={token}; Max-Age={COOKIE_MAX_AGE}; Path=/; HttpOnly; SameSite=Strict"
-                return self._send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": cookie})
-            ok, device = self._gate()
+                return self._send(303, b"", "text/plain", {"Location": "/", "Set-Cookie": _cookie(token)})
+            ok, device = self._gate(path)
             if not ok:
                 if is_allowed_client(self._client()):
                     self._json({"ok": False, "error": "この端末は登録されていません。"}, 401)
