@@ -21,17 +21,30 @@ def test_load_url_rejects_non_http_and_missing(tmp_path, monkeypatch):
     assert tray_viewer.load_url(tmp_path / "none.env") is None
 
 
-def test_open_view_uses_edge_app_window(monkeypatch):
+def test_open_view_uses_app_window(monkeypatch):
     calls = []
-    monkeypatch.setattr(tray_viewer, "find_edge", lambda: "msedge.exe")
+    monkeypatch.setattr(tray_viewer, "find_browser", lambda: "chrome.exe")
     monkeypatch.setattr(tray_viewer.subprocess, "Popen", lambda args, **kw: calls.append(args))
     tray_viewer.open_view("http://192.0.2.10:8765/")
-    assert calls == [["msedge.exe", "--app=http://192.0.2.10:8765/"]]
+    assert calls == [["chrome.exe", "--app=http://192.0.2.10:8765/"]]
+
+
+def test_find_browser_prefers_chrome_over_edge(tmp_path, monkeypatch):
+    monkeypatch.setattr(tray_viewer.shutil, "which", lambda name: None)
+    monkeypatch.setattr(tray_viewer, "_PROGRAM_DIRS", [tmp_path])
+    edge = tmp_path / "Microsoft/Edge/Application/msedge.exe"
+    edge.parent.mkdir(parents=True)
+    edge.touch()
+    assert tray_viewer.find_browser() == str(edge)
+    chrome = tmp_path / "Google/Chrome/Application/chrome.exe"
+    chrome.parent.mkdir(parents=True)
+    chrome.touch()
+    assert tray_viewer.find_browser() == str(chrome)
 
 
 def test_open_view_falls_back_to_default_browser(monkeypatch):
     opened = []
-    monkeypatch.setattr(tray_viewer, "find_edge", lambda: None)
+    monkeypatch.setattr(tray_viewer, "find_browser", lambda: None)
     monkeypatch.setattr(tray_viewer.webbrowser, "open", opened.append)
     tray_viewer.open_view("http://192.0.2.10:8765/")
     assert opened == ["http://192.0.2.10:8765/"]

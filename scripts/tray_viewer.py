@@ -1,7 +1,7 @@
 """開発PC のタスクトレイに常駐し、Raspberry Pi で動く mail-triage の結果画面を開くだけのアプリ。
 
-- アイコンをクリック(または右クリック →「結果を表示」)で、結果画面を Edge のアプリ用ウィンドウで開く
-  (Edge がなければ既定のブラウザ)。手動実行・一括アーカイブは開いた画面から行う
+- アイコンをクリック(または右クリック →「結果を表示」)で、結果画面を Chrome のアプリ用ウィンドウで開く
+  (Chrome がなければ Edge、どちらもなければ既定のブラウザ)。画面内のメールのリンクも同じブラウザで開く。手動実行・一括アーカイブは開いた画面から行う
 - 開く先は .env の MAIL_TRIAGE_WEB_URL(例: http://<Pi のアドレス>:8765/)
 - ログオン時に起動するには、スタートアップに `pythonw scripts/tray_viewer.py` のショートカットを置く
 
@@ -20,11 +20,14 @@ import webbrowser
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-EDGE_PATHS = [
-    Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)"))
-    / "Microsoft/Edge/Application/msedge.exe",
-    Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
-    / "Microsoft/Edge/Application/msedge.exe",
+_PROGRAM_DIRS = [
+    Path(os.environ.get("ProgramFiles", r"C:\Program Files")),
+    Path(os.environ.get("ProgramFiles(x86)", r"C:\Program Files (x86)")),
+] + ([Path(os.environ["LOCALAPPDATA"])] if os.environ.get("LOCALAPPDATA") else [])
+# 先にあるものを使う(Chrome → Edge)
+BROWSERS = [
+    ("chrome", "Google/Chrome/Application/chrome.exe"),
+    ("msedge", "Microsoft/Edge/Application/msedge.exe"),
 ]
 
 
@@ -41,18 +44,21 @@ def load_url(env_path: Path = ROOT / ".env") -> str | None:
     return None
 
 
-def find_edge() -> str | None:
-    found = shutil.which("msedge")
-    if found:
-        return found
-    return next((str(p) for p in EDGE_PATHS if p.exists()), None)
+def find_browser() -> str | None:
+    for name, rel in BROWSERS:
+        found = shutil.which(name) or next(
+            (str(d / rel) for d in _PROGRAM_DIRS if (d / rel).exists()), None
+        )
+        if found:
+            return found
+    return None
 
 
 def open_view(url: str) -> None:
-    edge = find_edge()
-    if edge:
+    browser = find_browser()
+    if browser:
         subprocess.Popen(
-            [edge, f"--app={url}"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+            [browser, f"--app={url}"], creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
         )
     else:
         webbrowser.open(url)
