@@ -4,7 +4,7 @@ Raspberry Pi で常駐させる想定。
 - 家の LAN(プライベートな IPv4)と自分自身(127.0.0.1)からの接続だけを受け付ける
 - 端末は初回だけ合言葉で登録し、以後は Cookie で見分ける。未登録の端末にはメールの内容を出さない
 - 実行は同時に 1 つだけ。実行中に「今すぐ実行」が来たら新しくは始めず、実行中のものに相乗りする
-- 自分自身(127.0.0.1)からは、実行の依頼と状態の確認だけを登録なしで通す(夜間実行のタイマーのため)
+- 自分自身(127.0.0.1)からは、実行の依頼と状態の確認だけを登録なしで通す(定時実行のタイマーのため)
 - 端末の Cookie は1年で切れるが、使うたびに延長する
 """
 
@@ -37,7 +37,7 @@ logger = logging.getLogger("mail_triage.web")
 ROOT = Path(__file__).resolve().parent.parent
 COOKIE_NAME = "mt_device"
 COOKIE_MAX_AGE = 365 * 24 * 3600  # 使うたびに延長する。1年使わなかった端末は登録し直し
-# Pi 自身(127.0.0.1)から登録なしで使えるのは、夜間実行のきっかけと状態の確認だけ
+# Pi 自身(127.0.0.1)から登録なしで使えるのは、定時実行のきっかけと状態の確認だけ
 LOCAL_PATHS = {"/api/run", "/api/status"}
 MAX_FAILURES = 5
 LOCKOUT_SECONDS = 15 * 60
@@ -312,7 +312,7 @@ function mtShow(s) {
   const fail = document.getElementById("mt-fail");
   if (s.state === "running") {
     const mins = Math.floor((Date.now() - new Date(s.started_at)) / 60000);
-    el.textContent = `実行中(${s.trigger === "nightly" ? "夜間" : "手動"}、開始 ${s.started_at.slice(11,16)}、${mins}分経過)… ${s.stage}`;
+    el.textContent = `実行中(${s.trigger === "nightly" ? "定時" : "手動"}、開始 ${s.started_at.slice(11,16)}、${mins}分経過)… ${s.stage}`;
     btn.disabled = true;
     const ab = document.getElementById("bulk-archive-btn"); if (ab) ab.disabled = true;
     mtWasRunning = true;
