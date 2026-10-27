@@ -5,6 +5,9 @@ import re
 from pathlib import Path
 from typing import Any
 
+# importance_rulesのverdictに書ける、重要度区分以外の値。当たったメールは段階2で確定させず、段階3(Jev)で判定する。
+JEV_CHECK = "Jevで確認"
+
 REQUIRED_KEYS = {
     "version",
     "dry_run",
@@ -38,8 +41,10 @@ def _validate(config: dict[str, Any]) -> None:
 
     for rule in config["importance_rules"]:
         re.compile(rule["subject_regex"])
-        if rule["verdict"] not in verdict_names:
+        if rule["verdict"] not in verdict_names | {JEV_CHECK}:
             raise ValueError(f"invalid verdict in importance_rules: {rule}")
+
+    _validate_jev_body(config.get("jev_body", {}))
 
     jev_prompt = config["jev_prompt"]
     if "instructions" not in jev_prompt or "criteria" not in jev_prompt:
@@ -48,9 +53,21 @@ def _validate(config: dict[str, Any]) -> None:
         raise ValueError(f"jev_prompt.criteria must have exactly the keys {verdict_names}")
 
 
+def _validate_jev_body(jev_body: dict[str, Any]) -> None:
+    """Jevに渡す本文の設定(省略可)。max_charsは正の整数、redact_regexesは正規表現の配列。"""
+    max_chars = jev_body.get("max_chars", 1)
+    if not isinstance(max_chars, int) or isinstance(max_chars, bool) or max_chars <= 0:
+        raise ValueError(f"jev_body.max_chars must be a positive integer: {max_chars!r}")
+    redact_regexes = jev_body.get("redact_regexes", [])
+    if not isinstance(redact_regexes, list):
+        raise ValueError("jev_body.redact_regexes must be a list")
+    for pattern in redact_regexes:
+        re.compile(pattern)
+
+
 def _validate_verdict_levels(levels: list[dict[str, Any]]) -> set[str]:
     """重要度区分(名前・優先順位・ラベル付与要否・アーカイブ要否)の定義を検証する。
-    配列の並び順がそのまま優先度(先頭が最優先)になる。
+    配列の並び順がそのまま表示の順(先頭が上)になる。
     「要確認」「確認不要」は表示上の2大項目そのものであるため必ず含み、
     それ以外の区分(例:重要,技術ニュース)は display_group でどちらかに属する必要がある。
     """

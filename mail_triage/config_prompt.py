@@ -26,7 +26,7 @@ Gmailに届く仕事・金融・EC等の雑多なメールを、送信元ドメ�
 - gmail_fetch: {{base_query}} — inbox取得条件(inbox内の対象を毎回全件取得する)
 - sender_categories: [{{domain_regex, category}}, ...] — 送信元ドメインの正規表現 → カテゴリ(例: 仕事/金融/EC/技術/サービス/その他)
 - verdict_levels: [{{name, display_group, apply_label, label_name(省略可)}}, ...] — 重要度区分の定義。
-  配列の並び順=優先度(先頭が最優先、ルール競合時に採用される)。
+  配列の並び順=表示の順(先頭が上)。
   display_group は "要確認" か "確認不要" のどちらに統合表示するか。
   apply_label はGmailにラベルを付けるか。
   (既読化・inboxからの除外は設定ではなく、レポート画面の「一括既読・アーカイブ」ボタンでのみ行う)
@@ -35,16 +35,23 @@ Gmailに届く仕事・金融・EC等の雑多なメールを、送信元ドメ�
   その場合はlabel_nameで実際に付けるラベル名だけ別名に上書きできる(現に"重要"はlabel_name:"重要メール"としている)。
   区分を増減したい場合はここに追加/削除するだけでよい(コード変更は不要)。
   ただし「要確認」「確認不要」の2つは削除不可(display_groupの受け皿そのものであるため)。
-- importance_rules: [{{category, subject_regex, verdict}}, ...] — カテゴリ+件名正規表現 → verdict(verdict_levelsのnameのいずれか)
+- importance_rules: [{{category, subject_regex, verdict}}, ...] — カテゴリ+件名正規表現 → verdict(verdict_levelsのnameのいずれか、または "Jevで確認")。
+  並び順の先勝ち(上に書いた行が優先)。例外を一律ルール(".*")より上に書くこと。
+  "Jevで確認" に当たったメールは、段階3(Jev)で本文を見て判定する(どの行にも当たらなかったメールは件名とsnippetだけで判定する)
+  (件名だけでは決まらず、本文の中身で区分が変わるメール用。例: 宅配ボックスの暗証番号が書かれた配達完了通知)
 - jev_prompt: {{instructions, criteria}} — Jevに渡す判断基準(区分ごとの説明文)。
   パーソナライズしたい場合はここを編集する(コード変更は不要)。criteriaのキーはverdict_levelsのnameと完全一致させる必要がある
   (区分を追加/削除したら、jev_promptのcriteriaも同時に追加/削除すること)。
+- jev_body(省略可): {{max_chars, redact_regexes}} — "Jevで確認"のメールでJevに渡す本文の上限文字数(先頭から数える。既定500)と、
+  送る前に「＊」に置き換える正規表現の配列(氏名・注文番号など判定に要らない個人情報)。
 
 ## 各設定を利用する処理と実装ファイル
 - mail_triage/rule_classifier.py の classify_category() が sender_categories を参照し、カテゴリを決定する
 - mail_triage/rule_classifier.py の classify_verdict() が importance_rules を参照し、重要度区分を決定する
-  (複数ルールが競合した場合はverdict_levelsの並び順(優先度が高い順)で安全側を採用する)
-- 上記で判定できなかった場合のみ mail_triage/jev_adapter.py の classify_verdict_by_jev() が
+  (複数の行に当たった場合は上の行を採用し、下の行に別の判定があればrule_conflictを立てる)
+- 上記で判定できなかった場合("Jevで確認"に当たった場合も含む)のみ mail_triage/jev_adapter.py の classify_verdict_by_jev() が
+  ("Jevで確認"に当たった場合は、mail_triage/runner.py が gmail_client.get_message_body() で本文を取得し、
+  画面に表示される文字だけにしてjev_bodyの設定で伏せ字・切り詰めたものを、snippetの代わりに渡す)
   jev_prompt の内容を使ってJevに1回の呼び出しで全区分から選択させる(choice型、区分数がいくつでも1回で済む)
 - mail_triage/runner.py の apply_gmail_actions() が verdict_levels の apply_label に従って
   Gmailへのラベル付与を行う

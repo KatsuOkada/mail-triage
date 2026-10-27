@@ -20,6 +20,12 @@ pip install -r requirements.txt
 - `python scripts/serve_report.py` — 直近のレポートをレビュー用ローカルサーバーで表示する
 - `python scripts/tray.py` — タスクトレイに常駐し、実行結果の表示・手動実行・Jev利用/ドライモードの切り替えをアイコンメニューから行える
 
+## 判定の流れ
+
+1. 送信元ドメイン → カテゴリ(`sender_categories`)
+2. カテゴリ × 件名の正規表現 → 重要度区分(`importance_rules`)。**上に書いた行が優先**(先勝ち)なので、例外の行は一律の行(`.*`)より上に書く。`verdict` に `"Jevで確認"` と書いた行に当たったメールは、ここでは決めずに 3 に回す
+3. 2 で決まらなかったメールは Jev で判定する(`jev_prompt`)。どの行にも当たらなかったメール・未分類のメールは件名と snippet だけを渡す。`"Jevで確認"` に当たったメールだけは本文も取得して渡す。本文は HTML から画面に表示される文字だけを取り出し(style・script・head・`display:none` の要素は除き、見えない文字を消し、空白をまとめる)、`jev_body.redact_regexes` に当たる部分を「＊」にして、先頭の `jev_body.max_chars` 文字(既定 500 文字)だけを送る。本文は判定ログには残さない
+
 ## ディレクトリ構成
 
 - `mail_triage/` — 分類ロジック本体(Config Loader / Rule Classifier / Jev Adapter / Decision Logger)

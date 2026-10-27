@@ -4,7 +4,7 @@
 
 - This application accesses only the developer's own Gmail account via the Gmail API, using OAuth credentials that the developer controls.
 - It is not distributed to, or used by, any other person.
-- Email data read via the Gmail API (sender, subject, snippet) is processed locally on the developer's own machine and is not transmitted to any third party except:
+- Email data read via the Gmail API (sender, subject, snippet, and — only for messages that a local rule explicitly marks for body-based classification — the first few hundred characters of the visible message text) is processed locally on the developer's own machine and is not transmitted to any third party except:
   - [OpenRouter](https://openrouter.ai) / [TypeSafe AI](https://typesafe.ai), for automated importance/category classification of email content.
   - [Anthropic](https://www.anthropic.com), for generating natural-language summaries of important email.
 - No email data is sold, shared, or used for any purpose other than the developer's own inbox triage.

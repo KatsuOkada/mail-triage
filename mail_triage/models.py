@@ -26,8 +26,10 @@ class MailRecord:
     verdict: str | None = None  # "重要" | "要確認" | "確認不要"
     verdict_source: str | None = None  # "rule" | "jev"
     rule_conflict: bool = False
+    jev_check_rule: bool = False  # 「Jevで確認」の行に当たった(段階3でJevに本文を渡す)
 
     # 段階3: Jevによる判定(段階2で未確定だった場合のみ埋まる)
+    body: str | None = None  # Jevに渡す本文(文字にしたもの)。判定ログには残さない
     jev_probabilities: dict[str, float] | None = None
     jev_confidence: float | None = None
     low_confidence_flag: bool = False

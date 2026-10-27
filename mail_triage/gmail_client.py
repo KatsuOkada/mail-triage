@@ -12,6 +12,8 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import Resource, build
 from googleapiclient.errors import HttpError
 
+from .mail_body import extract_body_text
+
 logger = logging.getLogger("mail_triage")
 
 # gmail.modify: 読み取り+ラベル変更(既読化・アーカイブ・ラベル付与)が可能。
@@ -111,6 +113,19 @@ def get_message_metadata(service: Resource, message_id: str) -> dict[str, Any]:
         "date": headers.get("date", ""),
         "label_ids": msg.get("labelIds", []),
     }
+
+
+def get_message_body(
+    service: Resource,
+    message_id: str,
+    max_chars: int,
+    redact_regexes: list[str],
+) -> str:
+    """Jevに渡す本文を取得し、文字にして返す(段階3に回るメールだけで使う)。
+    format=fullで全体を取り、HTML部分を文字にする(style・scriptは除く)。
+    """
+    msg = service.users().messages().get(userId="me", id=message_id, format="full").execute()
+    return extract_body_text(msg["payload"], max_chars, redact_regexes)
 
 
 def _is_transient_error(exc: Exception) -> bool:

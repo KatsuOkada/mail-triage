@@ -17,7 +17,9 @@ MODEL = "jev-latest"
 
 def _build_payload(record: MailRecord, config: dict[str, Any]) -> dict[str, Any]:
     prompt_config = config["jev_prompt"]
-    state = f"件名: {record.subject}\n送信元: {record.sender}\n本文: {record.snippet}"
+    # 本文を取得済みならそれを、無ければGmailのsnippet(本文冒頭の抜粋)を渡す
+    body = record.body if record.body is not None else record.snippet
+    state = f"件名: {record.subject}\n送信元: {record.sender}\n本文: {body}"
     return {
         "model": MODEL,
         "state": state,

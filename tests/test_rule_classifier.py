@@ -93,63 +93,73 @@ def test_no_matching_rule_leaves_verdict_unset(config):
     assert record.verdict is None
 
 
-def test_conflicting_rules_prefer_need_check():
-    config = {
+def _config_with_rules(category: str, rules: list[dict]) -> dict:
+    return {
         "version": 1,
         "dry_run": True,
         "confidence_threshold": 0.3,
         "verdict_levels": DEFAULT_VERDICT_LEVELS,
-        "sender_categories": [{"category": "仕事", "domain_regex": "example\\.com$"}],
-        "importance_rules": [
-            {"category": "仕事", "subject_regex": "テスト", "verdict": "要確認"},
-            {"category": "仕事", "subject_regex": "テスト件名", "verdict": "確認不要"},
-        ],
+        "sender_categories": [{"category": category, "domain_regex": "example\\.com$"}],
+        "importance_rules": [dict(rule, category=category) for rule in rules],
     }
-    record = make_record("a@example.com", "テスト件名です")
+
+
+def test_first_matching_rule_wins_even_if_less_important():
+    # 並び順の先勝ち: 上の行が「確認不要」なら、下の「重要」の行にも当たっていても「確認不要」
+    config = _config_with_rules("金融", [
+        {"subject_regex": "お知らせ", "verdict": "確認不要"},
+        {"subject_regex": "お支払い", "verdict": "重要"},
+    ])
+    record = make_record("a@example.com", "お支払い金額のお知らせ")
     classify_category(record, config)
     classify_verdict(record, config)
-    assert record.verdict == "要確認"
-    assert record.rule_conflict is True
+    assert record.verdict == "確認不要"
+    assert record.verdict_source == "rule"
+    assert record.rule_conflict is True  # 下の行に別の判定が当たっていたことは残す
 
 
-def test_conflicting_rules_prefer_important_over_need_check():
-    config = {
-        "version": 1,
-        "dry_run": True,
-        "confidence_threshold": 0.3,
-        "verdict_levels": DEFAULT_VERDICT_LEVELS,
-        "sender_categories": [{"category": "金融", "domain_regex": "example\\.com$"}],
-        "importance_rules": [
-            {"category": "金融", "subject_regex": "お知らせ", "verdict": "要確認"},
-            {"category": "金融", "subject_regex": "お支払い", "verdict": "重要"},
-        ],
-    }
+def test_first_matching_rule_wins_when_listed_first():
+    config = _config_with_rules("金融", [
+        {"subject_regex": "お支払い", "verdict": "重要"},
+        {"subject_regex": "お知らせ", "verdict": "確認不要"},
+    ])
     record = make_record("a@example.com", "お支払い金額のお知らせ")
     classify_category(record, config)
     classify_verdict(record, config)
     assert record.verdict == "重要"
-    assert record.rule_conflict is True
 
 
-def test_conflict_priority_follows_verdict_levels_order():
-    config = {
-        "version": 1,
-        "dry_run": True,
-        "confidence_threshold": 0.3,
-        "verdict_levels": [
-            {"name": "重要", "display_group": "要確認", "apply_label": True},
-            {"name": "技術ニュース", "display_group": "確認不要", "apply_label": True},
-            {"name": "要確認", "display_group": "要確認", "apply_label": False},
-            {"name": "確認不要", "display_group": "確認不要", "apply_label": False},
-        ],
-        "sender_categories": [{"category": "技術", "domain_regex": "example\\.com$"}],
-        "importance_rules": [
-            {"category": "技術", "subject_regex": "リリース", "verdict": "要確認"},
-            {"category": "技術", "subject_regex": "新バージョン", "verdict": "技術ニュース"},
-        ],
-    }
-    record = make_record("a@example.com", "新バージョンリリースのお知らせ")
+def test_same_verdict_on_later_rule_is_not_conflict():
+    config = _config_with_rules("EC", [
+        {"subject_regex": "^発送", "verdict": "確認不要"},
+        {"subject_regex": ".*", "verdict": "確認不要"},
+    ])
+    record = make_record("a@example.com", "発送しました")
     classify_category(record, config)
     classify_verdict(record, config)
-    assert record.verdict == "技術ニュース"
-    assert record.rule_conflict is True
+    assert record.verdict == "確認不要"
+    assert record.rule_conflict is False
+
+
+def test_jev_check_rule_leaves_verdict_unset_and_stops_later_rules():
+    # 「Jevで確認」に当たったら、下の「.*→確認不要」には進まず、段階3(Jev)に回す
+    config = _config_with_rules("EC", [
+        {"subject_regex": "^配達済み", "verdict": "Jevで確認"},
+        {"subject_regex": ".*", "verdict": "確認不要"},
+    ])
+    record = make_record("a@example.com", "配達済み: 「サンプル商品」")
+    classify_category(record, config)
+    classify_verdict(record, config)
+    assert record.verdict is None
+    assert record.verdict_source is None
+
+
+def test_rules_below_jev_check_still_apply_to_other_subjects():
+    config = _config_with_rules("EC", [
+        {"subject_regex": "^配達済み", "verdict": "Jevで確認"},
+        {"subject_regex": ".*", "verdict": "確認不要"},
+    ])
+    record = make_record("a@example.com", "配達中: 「サンプル商品」")
+    classify_category(record, config)
+    classify_verdict(record, config)
+    assert record.verdict == "確認不要"

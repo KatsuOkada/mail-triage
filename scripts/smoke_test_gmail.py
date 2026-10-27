@@ -29,7 +29,7 @@ def main() -> None:
     print(f"inbox内{len(records)}件が見つかりました。\n")
 
     for record in records[:5]:
-        process_record(record, config)
+        process_record(record, config, service)
         print(
             f"件名: {record.subject}\n"
             f"送信元: {record.sender}\n"

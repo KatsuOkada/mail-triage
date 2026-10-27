@@ -8,6 +8,8 @@ from pathlib import Path
 from .models import MailRecord
 
 _FIELD_NAMES = {f.name for f in fields(MailRecord)}
+# 本文は暗証番号・氏名などを含むため、判定ログには書かない
+_NOT_LOGGED = {"body"}
 
 
 def log_path(base_dir: str | Path, for_date: date | None = None) -> Path:
@@ -19,8 +21,9 @@ def log_path(base_dir: str | Path, for_date: date | None = None) -> Path:
 
 def append_record(record: MailRecord, base_dir: str | Path, for_date: date | None = None) -> None:
     path = log_path(base_dir, for_date)
+    row = {k: v for k, v in asdict(record).items() if k not in _NOT_LOGGED}
     with path.open("a", encoding="utf-8") as f:
-        f.write(json.dumps(asdict(record), ensure_ascii=False) + "\n")
+        f.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
 def load_records(base_dir: str | Path, for_date: date) -> list[MailRecord]:
